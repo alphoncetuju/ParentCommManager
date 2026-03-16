@@ -19,33 +19,23 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
+    - name: Install Gradle 8.4
+      uses: gradle/actions/setup-gradle@v3
+      with:
+        gradle-version: '8.4'
+
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
-    - name: Fix gradle wrapper
-      run: |
-        cat > gradle/wrapper/gradle-wrapper.properties << 'EOF'
-        distributionBase=GRADLE_USER_HOME
-        distributionPath=wrapper/dists
-        zipStoreBase=GRADLE_USER_HOME
-        zipStorePath=wrapper/dists
-        distributionUrl=https\://services.gradle.org/distributions/gradle-8.4-bin.zip
-        EOF
+    - name: Accept Android licenses
+      run: yes | sdkmanager --licenses || true
 
-        cat > gradlew << 'EOF'
-        #!/bin/sh
-        SCRIPT_DIR=$(dirname "$0")
-        exec java \
-          -Xmx64m \
-          -Xms64m \
-          -classpath "$SCRIPT_DIR/gradle/wrapper/gradle-wrapper.jar" \
-          org.gradle.wrapper.GradleWrapperMain "$@"
-        EOF
-        chmod +x gradlew
+    - name: Install Android build tools
+      run: sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
-    - name: Fix build.gradle
+    - name: Write build.gradle
       run: |
-        cat > build.gradle << 'EOF'
+        cat > build.gradle << 'GRADLE'
         buildscript {
             repositories {
                 google()
@@ -64,9 +54,11 @@ jobs:
         task clean(type: Delete) {
             delete rootProject.buildDir
         }
-        EOF
+        GRADLE
 
-        cat > app/build.gradle << 'EOF'
+    - name: Write app/build.gradle
+      run: |
+        cat > app/build.gradle << 'GRADLE'
         plugins {
             id 'com.android.application'
         }
@@ -99,18 +91,27 @@ jobs:
             implementation 'androidx.recyclerview:recyclerview:1.3.2'
             implementation 'androidx.cardview:cardview:1.0.0'
         }
-        EOF
+        GRADLE
 
-    - name: Cache Gradle
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.gradle/caches
-          ~/.gradle/wrapper
-        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
+    - name: Write settings.gradle
+      run: |
+        cat > settings.gradle << 'GRADLE'
+        rootProject.name = "ParentCommManager"
+        include ':app'
+        GRADLE
+
+    - name: Write gradle.properties
+      run: |
+        cat > gradle.properties << 'PROPS'
+        org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+        android.useAndroidX=true
+        android.enableJetifier=true
+        PROPS
 
     - name: Build Debug APK
-      run: ./gradlew assembleDebug --stacktrace
+      run: gradle assembleDebug --stacktrace
+      env:
+        ANDROID_HOME: /usr/local/lib/android/sdk
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
