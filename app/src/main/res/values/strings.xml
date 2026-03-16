@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Parent Comm Manager</string>
+    <string name="add_learner">Add Learner</string>
+    <string name="edit_learner">Edit Learner</string>
+    <string name="communication_history">Communication History</string>
+    <string name="send_sms">Send SMS</string>
+    <string name="bulk_sms">Bulk SMS</string>
+</resources>
